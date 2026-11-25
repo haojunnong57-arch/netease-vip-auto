@@ -1,5 +1,5 @@
-# 2026-11-25T15:24:04Z
-# probe: == 普通 GET == curl: (6) Could not resolve host: pac-senate-lemon-quiz.trycloudflare.com http=000 curl 失败 == 带 Upgrade 头 == curl: (6) Could not resolve host: pac-senate-lemon-quiz.trycloudflare.com 
-# selftest: == try 1 == FAIL wserror 
-# xray: 2026/11/25 15:23:54 [Info] infra/conf/serial: Reading config: &{Name:/tmp/xray.json Format:json} 2026/11/25 15:23:54 [Info] transport/internet/websocket: listening TCP(for WS) on 127.0.0.1:8080 2026/1
-vless://557d6174-d039-4507-ba7b-55d00b0fd8e1@pac-senate-lemon-quiz.trycloudflare.com:443?encryption=none&security=tls&sni=pac-senate-lemon-quiz.trycloudflare.com&type=ws&host=pac-senate-lemon-quiz.trycloudflare.com&path=%2Frxbbii26hw#gh-box
+# 2026-11-25T15:27:44Z
+# probe: == 普通 GET == http=400 == 带 Upgrade 头 == HTTP/2 400  date: Wed, 25 Nov 2026 15:27:43 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a601add7cff20d62-SEA cf-cache-status: DYNAMIC server: cloudflare x-content-type-options: nosniff x-robots-tag: none x-robots-tag: none  
+# selftest: == try 1 == ws-open PASS HTTP/1.1 200 OK rc=0 
+# xray: 2026/11/25 15:27:43 [Info] [635134667] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.101:60642, remote endpoint 172.66.147.243:80 2026/11/25 15:27:43 [Info] [635134667]
+vless://bc8c0688-fea2-4488-aa3e-07c242d03705@americas-tackle-acceptable-bra.trycloudflare.com:443?encryption=none&security=tls&sni=americas-tackle-acceptable-bra.trycloudflare.com&type=ws&host=americas-tackle-acceptable-bra.trycloudflare.com&path=%2Fza6ox0#gh-box
