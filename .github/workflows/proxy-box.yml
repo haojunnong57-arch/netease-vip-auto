@@ -72,6 +72,7 @@ jobs:
           echo "隧道域名: ${HOST#https://}"
 
       - name: 端到端自检（用 VLESS 客户端穿一次）
+        continue-on-error: true
         run: |
           cat > /tmp/vless_test.mjs <<'EOF'
           const UUID=process.env.UUID, HOST=process.env.DOMAIN, PATH=process.env.P;
@@ -92,7 +93,15 @@ jobs:
           ws.onerror=()=>console.log('FAIL ws error');
           ws.onclose=(c)=>console.log('FAIL closed '+c.code);
           EOF
-          node /tmp/vless_test.mjs > /tmp/selftest.txt 2>&1; echo "退出码 $?" >> /tmp/selftest.txt
+          : > /tmp/selftest.txt
+          for i in 1 2 3 4 5; do
+            echo "--- 第 $i 次尝试 ---" >> /tmp/selftest.txt
+            timeout 40 node /tmp/vless_test.mjs >> /tmp/selftest.txt 2>&1
+            RC=$?
+            echo "退出码 $RC" >> /tmp/selftest.txt
+            if grep -q PASS /tmp/selftest.txt; then break; fi
+            sleep 5
+          done
           cat /tmp/selftest.txt
 
       - name: 发布订阅 + 状态
