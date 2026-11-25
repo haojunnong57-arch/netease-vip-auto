@@ -1,0 +1,35 @@
+name: netease-daily
+
+on:
+  schedule:
+    # 每天 00:10 UTC = 北京时间 08:10
+    - cron: "10 0 * * *"
+  workflow_dispatch: {}      # 手机/网页上手动点一下也能跑
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: install deps
+        run: pip install --quiet requests pycryptodome
+
+      - name: run daily tasks
+        env:
+          MUSIC_U: ${{ secrets.MUSIC_U }}
+          MUSIC_A: ${{ secrets.MUSIC_A }}
+          CSRF: ${{ secrets.CSRF }}
+        run: python netease_daily.py
+
+      - name: keep last result
+        if: always()
+        run: echo "done at $(date -u)"
