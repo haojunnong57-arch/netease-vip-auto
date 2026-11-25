@@ -2,9 +2,8 @@ name: netease-daily
 
 on:
   schedule:
-    # 每天 00:10 UTC = 北京时间 08:10
-    - cron: "10 0 * * *"
-  workflow_dispatch: {}      # 手机/网页上手动点一下也能跑
+    - cron: "10 0 * * *"      # 北京时间 08:10
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -23,13 +22,25 @@ jobs:
       - name: install deps
         run: pip install --quiet requests pycryptodome
 
-      - name: run daily tasks
-        env:
-          MUSIC_U: ${{ secrets.MUSIC_U }}
-          MUSIC_A: ${{ secrets.MUSIC_A }}
-          CSRF: ${{ secrets.CSRF }}
-        run: python netease_daily.py
+      # 凭证来源二选一：
+      #   A. 仓库 Settings 里的 Secrets（推荐）
+      #   B. .github/cookie.env 文件（私有仓库才这么干，方便手机端维护）
+      - name: load credentials
+        run: |
+          if [ -f .github/cookie.env ]; then
+            set -a
+            . .github/cookie.env
+            set +a
+            echo "MUSIC_U=$MUSIC_U" >> "$GITHUB_ENV"
+            echo "MUSIC_A=$MUSIC_A" >> "$GITHUB_ENV"
+            echo "CSRF=$CSRF" >> "$GITHUB_ENV"
+            echo "凭证来源: cookie.env"
+          else
+            echo "MUSIC_U=${{ secrets.MUSIC_U }}" >> "$GITHUB_ENV"
+            echo "MUSIC_A=${{ secrets.MUSIC_A }}" >> "$GITHUB_ENV"
+            echo "CSRF=${{ secrets.CSRF }}" >> "$GITHUB_ENV"
+            echo "凭证来源: secrets"
+          fi
 
-      - name: keep last result
-        if: always()
-        run: echo "done at $(date -u)"
+      - name: run daily tasks
+        run: python netease_daily.py
