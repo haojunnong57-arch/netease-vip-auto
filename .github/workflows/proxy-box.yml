@@ -84,6 +84,21 @@ jobs:
           echo "DOMAIN=${HOST#https://}" >> $GITHUB_ENV
           echo "隧道: ${HOST#https://}"
 
+      - name: 探针（Cloudflare 是否放行 WS 升级）
+        continue-on-error: true
+        run: |
+          {
+            echo "== 普通 GET =="
+            curl -sS -o /dev/null -w "http=%{http_code}\n" "https://$DOMAIN$P" || echo "curl 失败"
+            echo "== 带 Upgrade 头 =="
+            curl -sS -i --max-time 20 \
+              -H "Connection: Upgrade" -H "Upgrade: websocket" \
+              -H "Sec-WebSocket-Version: 13" \
+              -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+              "https://$DOMAIN$P" 2>&1 | head -12
+          } > /tmp/probe.txt 2>&1
+          cat /tmp/probe.txt
+
       - name: 端到端自检
         continue-on-error: true
         run: |
@@ -125,6 +140,7 @@ jobs:
           printf '%s' "$LINK" | base64 | tr -d '\n' > sub/subscription.txt
           {
             echo "# $(date -u +%FT%TZ)"
+            echo "# probe: $(tr '\n' ' ' < /tmp/probe.txt 2>/dev/null | head -c 400)"
             echo "# selftest: $(tr '\n' ' ' < /tmp/selftest.txt 2>/dev/null | head -c 300)"
             echo "# xray: $(tail -3 /tmp/xray.log 2>/dev/null | tr '\n' ' ' | head -c 200)"
             echo "$LINK"
