@@ -1,0 +1,4 @@
+# 2026-11-25T15:20:46Z
+# selftest: == try 1 == FAIL wserror 
+# xray: 2026/11/25 15:20:33 [Info] infra/conf/serial: Reading config: &{Name:/tmp/xray.json Format:json} 2026/11/25 15:20:33 [Info] transport/internet/websocket: listening TCP(for WS) on 127.0.0.1:8080 2026/1
+vless://cf9c8922-16bc-46d2-9c43-a15080cfe547@elections-luxury-installations-mix.trycloudflare.com:443?encryption=none&security=tls&sni=elections-luxury-installations-mix.trycloudflare.com&type=ws&host=elections-luxury-installations-mix.trycloudflare.com&path=%2F4ho#gh-box
