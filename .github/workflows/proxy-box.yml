@@ -1,16 +1,12 @@
 name: proxy-box
 
-# 24 小时自动接力代理（自带端到端自检）
-# 每 5 小时自动重开；启动后机器会用 VLESS 客户端自己穿一次隧道，
-# 把 PASS/FAIL 和链接一起写进 sub/ 目录，可直接用 raw 地址查看。
-
 on:
   workflow_dispatch:
     inputs:
       minutes:
         description: "保持时长（分钟，最大 350）"
         required: false
-        default: "350"
+        default: "340"
   schedule:
     - cron: "0 */5 * * *"
 
@@ -28,35 +24,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 装 xray + cloudflared
+      - name: 装 xray v1.8.24（WS 稳定版）
         run: |
-          sudo bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install >/dev/null 2>&1
-          curl -sL -o /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-          chmod +x /tmp/cloudflared
-          /usr/local/bin/xray version | head -1
+          set -x
+          URL="https://github.com/XTLS/Xray-core/releases/download/v1.8.24/Xray-linux-64.zip"
+          for i in 1 2 3; do
+            curl -fsSL --retry 3 --retry-delay 3 -o /tmp/xray.zip "$URL" && break
+            echo "下载失败，重试 $i"; sleep 5
+          done
+          ls -l /tmp/xray.zip
+          unzip -o -q /tmp/xray.zip -d /tmp/xraybin
+          chmod +x /tmp/xraybin/xray
+          /tmp/xraybin/xray version | head -2
 
-      - name: 起 xray（setsid 防被回收）
+      - name: 装 cloudflared
+        run: |
+          for i in 1 2 3; do
+            curl -fsSL --retry 3 -o /tmp/cloudflared \
+              https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 && break
+            echo "重试 $i"; sleep 5
+          done
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared --version
+
+      - name: 起 xray
         run: |
           UUID="$(cat /proc/sys/kernel/random/uuid)"
           P="/$(head -c 8 /dev/urandom | base64 | tr -dc 'a-z0-9')"
           echo "UUID=$UUID" >> $GITHUB_ENV
           echo "P=$P" >> $GITHUB_ENV
-          cat > /tmp/xray.json <<EOF
+          cat > /tmp/xray.json <<JSON
           {
-            "log": {"loglevel": "warning"},
+            "log": {"loglevel": "info"},
             "inbounds": [{
-              "port": 8080, "listen": "127.0.0.1", "protocol": "vless",
-              "settings": {"clients": [{"id": "$UUID"}], "decryption": "none"},
+              "port": 8080,
+              "listen": "127.0.0.1",
+              "protocol": "vless",
+              "settings": {"clients": [{"id": "$UUID", "level": 0}], "decryption": "none"},
               "streamSettings": {"network": "ws", "wsSettings": {"path": "$P"}}
             }],
             "outbounds": [{"protocol": "freedom", "settings": {}}]
           }
-          EOF
-          sudo setsid nohup /usr/local/bin/xray run -c /tmp/xray.json > /tmp/xray.log 2>&1 &
+          JSON
+          setsid nohup /tmp/xraybin/xray run -c /tmp/xray.json > /tmp/xray.log 2>&1 &
           sleep 4
-          echo "--- 监听检查 ---"
-          (ss -lntp 2>/dev/null || netstat -lntp 2>/dev/null) | grep 8080 || echo "警告: 8080 未监听"
-          tail -5 /tmp/xray.log || true
+          (ss -lntp 2>/dev/null || netstat -lntp 2>/dev/null) | grep 8080 || echo "警告 8080 未监听"
+          tail -6 /tmp/xray.log
 
       - name: 起隧道
         run: |
@@ -67,62 +80,62 @@ jobs:
             HOST=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf.log | head -1)
             [ -n "$HOST" ] && break
           done
-          [ -z "$HOST" ] && { echo "隧道起不来"; tail -20 /tmp/cf.log; exit 1; }
+          if [ -z "$HOST" ]; then echo "隧道起不来"; tail -20 /tmp/cf.log; exit 1; fi
           echo "DOMAIN=${HOST#https://}" >> $GITHUB_ENV
-          echo "隧道域名: ${HOST#https://}"
+          echo "隧道: ${HOST#https://}"
 
-      - name: 端到端自检（用 VLESS 客户端穿一次）
+      - name: 端到端自检
         continue-on-error: true
         run: |
-          cat > /tmp/vless_test.mjs <<'EOF'
-          const UUID=process.env.UUID, HOST=process.env.DOMAIN, PATH=process.env.P;
+          cat > /tmp/vless_test.mjs <<'NODE'
+          const UUID=process.env.UUID, HOST=process.env.DOMAIN, P=process.env.P;
           const TARGET='example.com', TPORT=80;
           const uuidBytes=Buffer.from(UUID.replace(/-/g,''),'hex');
           const addr=Buffer.from(TARGET,'utf8');
           const port=Buffer.alloc(2); port.writeUInt16BE(TPORT);
-          const head=Buffer.concat([Buffer.from([0]),uuidBytes,Buffer.from([0,1]),port,Buffer.from([2]),Buffer.from([addr.length]),addr]);
+          const head=Buffer.concat([Buffer.from([0]),uuidBytes,Buffer.from([0,1]),port,
+                                    Buffer.from([2]),Buffer.from([addr.length]),addr]);
           const req=Buffer.concat([head,Buffer.from(`GET / HTTP/1.1\r\nHost: ${TARGET}\r\nConnection: close\r\n\r\n`)]);
-          const ws=new WebSocket(`wss://${HOST}${PATH}`);
-          const timer=setTimeout(()=>{console.log('FAIL 超时');process.exit(2)},30000);
-          ws.onopen=()=>ws.send(req);
+          const ws=new WebSocket(`wss://${HOST}${P}`);
+          const timer=setTimeout(()=>{console.log('FAIL timeout');process.exit(2)},20000);
+          ws.onopen=()=>{console.log('ws-open');ws.send(req)};
           ws.onmessage=async(e)=>{
-            const buf=Buffer.from(await (e.data instanceof Blob? e.data.arrayBuffer(): e.data));
-            const txt=buf.slice(2+buf[1]).toString('utf8');
-            if(txt.includes('HTTP/1.')){console.log('PASS '+txt.split('\r\n')[0]);clearTimeout(timer);process.exit(0)}
+            const b=Buffer.from(await (e.data instanceof Blob? e.data.arrayBuffer(): e.data));
+            const t=b.slice(2+b[1]).toString('utf8');
+            if(t.includes('HTTP/1.')){console.log('PASS '+t.split('\r\n')[0]);clearTimeout(timer);process.exit(0)}
           };
-          ws.onerror=()=>console.log('FAIL ws error');
-          ws.onclose=(c)=>console.log('FAIL closed '+c.code);
-          EOF
+          ws.onerror=(e)=>{console.log('FAIL wserror');process.exit(3)};
+          ws.onclose=(c)=>console.log('FAIL close '+c.code);
+          NODE
           : > /tmp/selftest.txt
-          for i in 1 2 3 4 5; do
-            echo "--- 第 $i 次尝试 ---" >> /tmp/selftest.txt
-            timeout 40 node /tmp/vless_test.mjs >> /tmp/selftest.txt 2>&1
-            RC=$?
-            echo "退出码 $RC" >> /tmp/selftest.txt
-            if grep -q PASS /tmp/selftest.txt; then break; fi
-            sleep 5
+          for i in 1 2 3; do
+            echo "== try $i ==" >> /tmp/selftest.txt
+            timeout 30 node /tmp/vless_test.mjs >> /tmp/selftest.txt 2>&1
+            echo "rc=$?" >> /tmp/selftest.txt
+            grep -q PASS /tmp/selftest.txt && break
+            sleep 6
           done
           cat /tmp/selftest.txt
 
-      - name: 发布订阅 + 状态
+      - name: 发布状态
+        if: always()
         run: |
           LINK="vless://${UUID}@${DOMAIN}:443?encryption=none&security=tls&sni=${DOMAIN}&type=ws&host=${DOMAIN}&path=${P//\//%2F}#gh-box"
           mkdir -p sub
           printf '%s' "$LINK" | base64 | tr -d '\n' > sub/subscription.txt
           {
-            echo "# 更新时间: $(date -u +%FT%TZ)"
-            echo "# 自检结果: $(cat /tmp/selftest.txt | tr '\n' ' ')"
+            echo "# $(date -u +%FT%TZ)"
+            echo "# selftest: $(tr '\n' ' ' < /tmp/selftest.txt 2>/dev/null | head -c 300)"
+            echo "# xray: $(tail -3 /tmp/xray.log 2>/dev/null | tr '\n' ' ' | head -c 200)"
             echo "$LINK"
           } > sub/node.txt
-          echo "=== 节点 ==="; echo "$LINK"
-          echo "=== 自检 ==="; cat /tmp/selftest.txt
           git config user.email actions@github.com
           git config user.name proxy-bot
-          git add sub || true
-          git commit -m "sub: $(date -u +%FT%TZ) $(cat /tmp/selftest.txt | head -1)" || echo 无变化
-          git push || echo 推送失败
+          git add sub
+          git commit -m "sub $(date -u +%H%M%S)" || true
+          git push || true
 
       - name: 保活
         run: |
-          MIN=${{ fromJSON(github.event.inputs.minutes || '350') }}
+          MIN=${{ fromJSON(github.event.inputs.minutes || '340') }}
           for i in $(seq 1 $MIN); do sleep 60; done
