@@ -1,0 +1,42 @@
+name: ssh-box
+
+# 免费"服务器"：手动触发后给你一个可以 SSH 登录的 GitHub Actions 机器
+# 规格：2 核 CPU / 7 GB 内存 / 14 GB 磁盘 / Ubuntu 最新
+# 时长：单次最长 350 分钟（GitHub 硬上限 6 小时）
+# 额度：私有仓库免费账户每月 2000 分钟，够开 5 次 350 分钟
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "保持时长（分钟，最大 350）"
+        required: false
+        default: "60"
+
+permissions:
+  contents: read
+
+jobs:
+  box:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 装好常用环境
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tmux htop git curl wget jq unzip zip \
+            python3 python3-pip nodejs npm ffmpeg imagemagick sqlite3 \
+            net-tools dnsutils traceroute >/dev/null 2>&1
+          pip3 install --quiet requests pycryptodome beautifulsoup4 lxml 2>/dev/null || true
+          echo "CPU: $(nproc) 核 / 内存: $(free -h | awk '/Mem:/{print $2}') / 磁盘: $(df -h / | awk 'NR==2{print $2}')"
+          echo "Python: $(python3 -V) / Node: $(node -v)"
+
+      - name: 开 SSH 会话
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: false
+          timeout-minutes: ${{ fromJSON(github.event.inputs.minutes || '60') }}
+
+      # 会话结束后机器自动销毁，数据不留存

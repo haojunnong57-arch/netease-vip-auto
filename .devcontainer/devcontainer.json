@@ -1,0 +1,14 @@
+{
+  "name": "free-box",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
+  "postCreateCommand": "pip install --user requests pycryptodome beautifulsoup4 lxml 2>/dev/null || true",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
+    }
+  },
+  "hostRequirements": { "cpus": 2, "memory": "8gb", "storage": "32gb" }
+}
