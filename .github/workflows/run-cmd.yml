@@ -1,0 +1,51 @@
+name: run-cmd
+
+# 在免费机器上跑一条命令，结果写进日志
+# 触发：workflow_dispatch，参数 cmd = 要执行的 shell 命令
+# 规格：2 核 / 7 GB / 14 GB 磁盘 / 最长 30 分钟
+
+on:
+  workflow_dispatch:
+    inputs:
+      cmd:
+        description: "要执行的 shell 命令"
+        required: true
+        default: "nproc; free -h; df -h /; python3 -V; node -v"
+      minutes:
+        description: "超时分钟数"
+        required: false
+        default: "10"
+
+permissions:
+  contents: read
+
+jobs:
+  exec:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(github.event.inputs.minutes || '10') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 环境信息
+        run: |
+          echo "=== CPU ==="; nproc
+          echo "=== MEM ==="; free -h
+          echo "=== DISK ==="; df -h /
+          echo "=== PY ==="; python3 -V; echo "=== NODE ==="; node -v
+
+      - name: 执行命令
+        env:
+          CMD: ${{ github.event.inputs.cmd }}
+        run: |
+          echo "=== BEGIN CMD ==="
+          bash -lc "$CMD" 2>&1 || echo "[exit=$?]"
+          echo "=== END CMD ==="
+
+      - name: 交付文件（若命令产物写进 out/）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: out
+          path: out/
+          if-no-files-found: ignore
+          retention-days: 3
