@@ -1,9 +1,8 @@
 name: proxy-box
 
-# 免费临时出口：GitHub Actions 上起一个 VLESS+WS 代理，用 Cloudflare 隧道对外
-# 特点：出口 IP 在 Azure（美国/欧洲），每次运行都换 IP，跑完即毁
-# 时长：单次最长 350 分钟
-# 用法：Run workflow → 看日志里的 "VLESS 链接"，粘进 v2rayN / Shadowrocket / NekoBox
+# 24 小时自动接力代理
+# 机制：每 5 小时自动重开一次（单次跑 350 分钟），并把最新 VLESS 链接写进 sub/subscription.txt
+# 客户端只需订阅一次 raw 地址，之后自动跟着更新，不用再手动复制链接
 
 on:
   workflow_dispatch:
@@ -11,20 +10,24 @@ on:
       minutes:
         description: "保持时长（分钟，最大 350）"
         required: false
-        default: "120"
-      uuid:
-        description: "自定义 UUID（留空自动生成）"
-        required: false
-        default: ""
+        default: "350"
+  schedule:
+    - cron: "0 */5 * * *"     # 每 5 小时接力一次
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: proxy-box
+  cancel-in-progress: true     # 新的一轮直接顶掉旧的，几乎无缝
 
 jobs:
   proxy:
     runs-on: ubuntu-latest
     timeout-minutes: 355
     steps:
+      - uses: actions/checkout@v4
+
       - name: 装 xray
         run: |
           sudo bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install >/dev/null 2>&1
@@ -36,69 +39,59 @@ jobs:
           chmod +x /tmp/cloudflared
           /tmp/cloudflared --version
 
-      - name: 生成配置并启动
-        env:
-          UUID_IN: ${{ github.event.inputs.uuid }}
+      - name: 起代理 + 隧道
         run: |
-          UUID="${UUID_IN:-$(cat /proc/sys/kernel/random/uuid)}"
-          PATH_WS="/$(head -c 8 /dev/urandom | base64 | tr -dc 'a-z0-9')"
-          echo "UUID=$UUID" >> $GITHUB_ENV
-          echo "PATH_WS=$PATH_WS" >> $GITHUB_ENV
-
+          UUID="$(cat /proc/sys/kernel/random/uuid)"
+          P="/$(head -c 8 /dev/urandom | base64 | tr -dc 'a-z0-9')"
           sudo tee /usr/local/etc/xray/config.json >/dev/null <<EOF
           {
             "log": {"loglevel": "warning"},
             "inbounds": [{
-              "port": 8080,
-              "listen": "127.0.0.1",
-              "protocol": "vless",
-              "settings": {
-                "clients": [{"id": "$UUID"}],
-                "decryption": "none"
-              },
-              "streamSettings": {
-                "network": "ws",
-                "wsSettings": {"path": "$PATH_WS"}
-              }
+              "port": 8080, "listen": "127.0.0.1", "protocol": "vless",
+              "settings": {"clients": [{"id": "$UUID"}], "decryption": "none"},
+              "streamSettings": {"network": "ws", "wsSettings": {"path": "$P"}}
             }],
             "outbounds": [{"protocol": "freedom", "settings": {}}]
           }
           EOF
-
-          sudo systemctl restart xray || sudo /usr/local/bin/xray run -c /usr/local/etc/xray/config.json &
+          sudo systemctl restart xray || (sudo /usr/local/bin/xray run -c /usr/local/etc/xray/config.json &)
           sleep 3
-          ss -lntp 2>/dev/null | grep 8080 || echo "8080 未监听"
 
-      - name: 开 Cloudflare 隧道
-        run: |
           /tmp/cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > /tmp/cf.log 2>&1 &
+          HOST=""
           for i in $(seq 1 30); do
             sleep 2
             HOST=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf.log | head -1)
             [ -n "$HOST" ] && break
           done
-          HOST=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf.log | head -1)
-          if [ -z "$HOST" ]; then echo "隧道起不来"; cat /tmp/cf.log | tail -20; exit 0; fi
+          [ -z "$HOST" ] && { echo "隧道起不来"; tail -20 /tmp/cf.log; exit 1; }
           DOMAIN=${HOST#https://}
+
+          echo "UUID=$UUID" >> $GITHUB_ENV
+          echo "DOMAIN=$DOMAIN" >> $GITHUB_ENV
+          echo "P=$P" >> $GITHUB_ENV
+
+          LINK="vless://${UUID}@${DOMAIN}:443?encryption=none&security=tls&sni=${DOMAIN}&type=ws&host=${DOMAIN}&path=${P//\//%2F}#gh-box"
           echo "================ 代理就绪 ================"
-          echo "UUID   : $UUID"
-          echo "域名   : $DOMAIN"
-          echo "路径   : $PATH_WS"
-          echo "端口   : 443"
-          echo "传输   : ws + tls"
-          echo ""
-          LINK="vless://${UUID}@${DOMAIN}:443?encryption=none&security=tls&sni=${DOMAIN}&type=ws&host=${DOMAIN}&path=${PATH_WS%25}#gh-box"
-          echo "VLESS 链接:"
           echo "$LINK"
           echo "=========================================="
 
+          mkdir -p sub
+          printf '%s' "$LINK" | base64 | tr -d '\n' > sub/subscription.txt
+          echo "订阅文件已生成"
+
+      - name: 发布订阅（客户端拉这个）
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "proxy-bot"
+          git add sub/subscription.txt
+          git commit -m "sub: $(date -u +%FT%TZ)" || echo "无变化"
+          git push || echo "推送失败"
+
       - name: 保活
         run: |
-          MIN=${{ fromJSON(github.event.inputs.minutes || '120') }}
-          echo "保持 $MIN 分钟…"
+          MIN=${{ fromJSON(github.event.inputs.minutes || '350') }}
           for i in $(seq 1 $MIN); do
             sleep 60
-            if [ $((i % 10)) -eq 0 ]; then
-              echo "[$i/$MIN 分钟] 隧道: $(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf.log | head -1)"
-            fi
+            if [ $((i % 30)) -eq 0 ]; then echo "[$i/$MIN] 存活, 域名 $DOMAIN"; fi
           done
