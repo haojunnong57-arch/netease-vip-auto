@@ -84,6 +84,15 @@ jobs:
           echo "DOMAIN=${HOST#https://}" >> $GITHUB_ENV
           echo "隧道: ${HOST#https://}"
 
+      - name: 等 DNS 生效
+        run: |
+          for i in $(seq 1 30); do
+            IP=$(getent hosts "$DOMAIN" | awk '{print $1}' | head -1)
+            if [ -n "$IP" ]; then echo "DNS 就绪: $DOMAIN -> $IP （第 $i 次）"; break; fi
+            echo "等待解析… $i"; sleep 3
+          done
+          getent hosts "$DOMAIN" || echo "DNS 仍未解析"
+
       - name: 探针（Cloudflare 是否放行 WS 升级）
         continue-on-error: true
         run: |
