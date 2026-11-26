@@ -1,5 +1,5 @@
-# 2026-11-25T23:35:09Z
-# probe: == 普通 GET == http=400 == 带 Upgrade 头 == HTTP/2 400  date: Wed, 25 Nov 2026 23:35:08 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a60477d78e49b167-ORD cf-cache-status: DYNAMIC server: cloudflare x-content-type-options: nosniff x-robots-tag: none x-robots-tag: none  
+# 2026-11-26T05:35:31Z
+# probe: == 普通 GET == http=400 == 带 Upgrade 头 == HTTP/2 400  date: Thu, 26 Nov 2026 05:35:31 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a60687babbfcdc2d-DFW cf-cache-status: DYNAMIC server: cloudflare x-content-type-options: nosniff x-robots-tag: none x-robots-tag: none  
 # selftest: == try 1 == ws-open PASS HTTP/1.1 200 OK rc=0 
-# xray: 2026/11/25 23:35:09 [Info] [2468489240] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.109:50618, remote endpoint 172.66.147.243:80 2026/11/25 23:35:09 [Info] [246848924
-vless://770c4296-7295-40fb-9d32-ffdaec63e0e3@tourism-temporal-llp-training.trycloudflare.com:443?encryption=none&security=tls&sni=tourism-temporal-llp-training.trycloudflare.com&type=ws&host=tourism-temporal-llp-training.trycloudflare.com&path=%2F3425o030#gh-box
+# xray: 2026/11/26 05:35:31 [Info] [1659743957] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.64:50924, remote endpoint 104.20.23.154:80 2026/11/26 05:35:31 [Info] [1659743957]
+vless://ff147476-5344-4074-8ef0-0ddfd03b7d3f@adapters-article-branches-heights.trycloudflare.com:443?encryption=none&security=tls&sni=adapters-article-branches-heights.trycloudflare.com&type=ws&host=adapters-article-branches-heights.trycloudflare.com&path=%2F8kf#gh-box
