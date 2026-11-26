@@ -1,0 +1,47 @@
+name: agent
+
+# 手动触发一个会干活的小 Agent（走 DeepSeek 官方 API）
+# 前置：仓库 Settings → Secrets and variables → Actions 里加一个 DEEPSEEK_API_KEY
+# 用法：Actions → agent → Run workflow → 填你要它干的事
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "要 Agent 干什么（一句话）"
+        required: true
+        default: "统计这个仓库里有多少个文件，各自多少行"
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 跑 Agent
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          AGENT_MAX_STEPS: "12"
+        run: |
+          pip install --quiet requests
+          python3 agent.py "${{ github.event.inputs.task }}"
+
+      - name: 保存产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-output
+          path: |
+            out/
+            *.md
+            *.json
+          if-no-files-found: ignore
+          retention-days: 3
