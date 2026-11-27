@@ -1,5 +1,5 @@
-# 2026-11-27T02:45:05Z
-# probe: == 普通 GET == http=530 == 带 Upgrade 头 == HTTP/2 400  date: Fri, 27 Nov 2026 02:45:04 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a60dcb703d38a1be-MSP cf-cache-status: DYNAMIC server: cloudflare x-content-type-options: nosniff x-robots-tag: none x-robots-tag: none  
+# 2026-11-27T14:52:57Z
+# probe: == 普通 GET == http=400 == 带 Upgrade 头 == HTTP/2 400  date: Fri, 27 Nov 2026 14:52:57 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a611f5a8fa9de82c-ORD cf-cache-status: DYNAMIC server: cloudflare x-content-type-options: nosniff x-robots-tag: none x-robots-tag: none  
 # selftest: == try 1 == ws-open PASS HTTP/1.1 200 OK rc=0 
-# xray: 2026/11/27 02:45:05 [Info] [2168011100] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.186:33388, remote endpoint 172.66.147.243:80 2026/11/27 02:45:05 [Info] [216801110
-vless://cd8ebf87-50d4-4df0-a405-349474df1340@listening-tunes-greeting-referrals.trycloudflare.com:443?encryption=none&security=tls&sni=listening-tunes-greeting-referrals.trycloudflare.com&type=ws&host=listening-tunes-greeting-referrals.trycloudflare.com&path=%2Fbp55s78#gh-box
+# xray: 2026/11/27 14:52:57 [Info] [39847007] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.150:45992, remote endpoint 172.66.147.243:80 2026/11/27 14:52:57 [Info] [39847007] p
+vless://a1eba90e-32df-495b-9295-8ae46713cf6d@charging-goat-prohibited-chancellor.trycloudflare.com:443?encryption=none&security=tls&sni=charging-goat-prohibited-chancellor.trycloudflare.com&type=ws&host=charging-goat-prohibited-chancellor.trycloudflare.com&path=%2F0k3bf5w8#gh-box
