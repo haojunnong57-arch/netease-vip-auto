@@ -1,5 +1,5 @@
-# 2026-11-27T23:21:16Z
-# probe: == 普通 GET == curl: (7) Failed to connect to most-occupation-president-themes.trycloudflare.com port 443 after 2 ms: Could not connect to server http=000 curl 失败 == 带 Upgrade 头 == HTTP/2 400  date: Fri, 27 Nov 2026 23:21:13 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a614de30588514cc-SJC cf-cache-status: DYNAMIC server: cloudfl
+# 2026-11-28T07:27:48Z
+# probe: == 普通 GET == http=400 == 带 Upgrade 头 == HTTP/2 400  date: Sat, 28 Nov 2026 07:27:48 GMT content-type: text/plain; charset=utf-8 content-length: 12 sec-websocket-version: 13 cf-ray: a617a6f5f93d3934-IAD cf-cache-status: DYNAMIC server: cloudflare x-content-type-options: nosniff x-robots-tag: none x-robots-tag: none  
 # selftest: == try 1 == ws-open PASS HTTP/1.1 200 OK rc=0 
-# xray: 2026/11/27 23:21:16 [Info] [584381133] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.108:38376, remote endpoint 104.20.23.154:80 2026/11/27 23:21:16 [Info] [584381133] 
-vless://6ffea9e5-17ca-493a-909f-2b4f09c8bb1e@most-occupation-president-themes.trycloudflare.com:443?encryption=none&security=tls&sni=most-occupation-president-themes.trycloudflare.com&type=ws&host=most-occupation-president-themes.trycloudflare.com&path=%2Fc86g#gh-box
+# xray: 2026/11/28 07:27:48 [Info] [1518050443] proxy/freedom: connection opened to tcp:example.com:80, local endpoint 10.1.0.117:49188, remote endpoint 104.20.23.154:80 2026/11/28 07:27:48 [Info] [1518050443
+vless://28930ef0-f111-4e25-ac8a-016a839dce68@paragraph-eos-engage-forgot.trycloudflare.com:443?encryption=none&security=tls&sni=paragraph-eos-engage-forgot.trycloudflare.com&type=ws&host=paragraph-eos-engage-forgot.trycloudflare.com&path=%2Fy052#gh-box
